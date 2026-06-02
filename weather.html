@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天氣預報</title>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #74abe2 0%, #5563de 100%);
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            transition: background 0.8s ease;
+        }
+
+        /* 天氣卡片 */
+        .weather-box {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            width: 380px;
+            color: white;
+            text-align: center;
+
+            animation: fadeIn 1s ease-out;
+        }
+
+        /* 卡片進場 */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 搜尋區 */
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        #cityInput {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            outline: none;
+        }
+
+        #searchBtn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            background: #5563de;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #searchBtn:hover {
+            transform: translateY(-2px);
+        }
+
+        #searchBtn:disabled {
+            background: gray;
+            cursor: not-allowed;
+        }
+
+        /* 資訊區動畫 */
+        .all {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        .fade-out {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .fade-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .icon-container {
+            height: 100px;
+        }
+
+        #weatherIcon {
+            display: none;
+            width: 100px;
+            height: 100px;
+            transition: all 0.5s ease;
+        }
+
+        /* 文字區 */
+        .all p {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            padding-bottom: 8px;
+        }
+
+        .place {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .temp {
+            color: #ffe600;
+            font-size: 28px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="weather-box">
+
+        <div class="search-bar">
+            <input
+                type="text"
+                id="cityInput"
+                placeholder="輸入城市英文名稱，例如 Taipei"
+            >
+
+            <button id="searchBtn">
+                查詢天氣
+            </button>
+        </div>
+
+        <div class="all fade-in">
+
+            <div class="icon-container">
+                <img id="weatherIcon">
+            </div>
+
+            <p>位置：<span class="place">城市</span></p>
+            <p>氣溫：<span class="temp">氣溫</span></p>
+            <p>狀況：<span class="wind">天氣狀況</span></p>
+            <p>風速：<span class="windPower">風力</span></p>
+            <p>濕度：<span class="humidity">--</span></p>
+
+        </div>
+    </div>
+
+    <script>
+
+        $(function () {
+
+            // 自動載入上次城市
+            let savedCity =
+                localStorage.getItem("lastCity");
+
+            if (savedCity) {
+                $("#cityInput").val(savedCity);
+                executeWeatherSearch(savedCity);
+            }
+
+            // 按鈕搜尋
+            $("#searchBtn").click(function () {
+
+                let cityName =
+                    $("#cityInput")
+                    .val()
+                    .trim();
+
+                if (!cityName) {
+                    alert("請輸入城市名稱！");
+                    return;
+                }
+
+                executeWeatherSearch(cityName);
+            });
+
+            // Enter 搜尋
+            $("#cityInput").keydown(function (e) {
+
+                if (e.key === "Enter") {
+                    $("#searchBtn").click();
+                }
+            });
+
+
+            // 核心查詢
+            function executeWeatherSearch(cityName) {
+
+                $.ajax({
+
+                    url:
+                    "https://api.openweathermap.org/data/2.5/weather",
+
+                    type: "GET",
+
+                    data: {
+                        q: cityName,
+
+                        appid:
+                        "d4b8b57a27dc4558578296f9338bc803",
+
+                        units: "metric",
+                        lang: "zh_tw"
+                    },
+
+                    dataType: "json",
+
+                    beforeSend: function () {
+
+                        $("#searchBtn")
+                            .prop("disabled", true)
+                            .text("查詢中...");
+                    },
+
+                    success: function (data) {
+
+                        localStorage.setItem(
+                            "lastCity",
+                            cityName
+                        );
+
+                        // 先淡出
+                        $(".all")
+                            .removeClass("fade-in")
+                            .addClass("fade-out");
+
+                        setTimeout(function () {
+
+                            // 更新資料
+                            $(".place").html(
+                                data.name +
+                                ", " +
+                                data.sys.country
+                            );
+
+                            $(".temp").html(
+                                data.main.temp +
+                                " °C"
+                            );
+
+                            $(".wind").html(
+                                data.weather[0]
+                                .description
+                            );
+
+                            $(".windPower").html(
+                                data.wind.speed +
+                                " m/s"
+                            );
+
+                            $(".humidity").html(
+                                data.main.humidity +
+                                "%"
+                            );
+
+                            // 背景切換
+                            let weatherMain =
+                                data.weather[0].main;
+
+                            if (
+                                weatherMain === "Clear"
+                            ) {
+
+                                $("body").css(
+                                    "background",
+                                    "linear-gradient(135deg,#56ccf2,#2f80ed)"
+                                );
+
+                            } else if (
+                                weatherMain === "Rain"
+                            ) {
+
+                                $("body").css(
+                                    "background",
+                                    "linear-gradient(135deg,#4b6cb7,#182848)"
+                                );
+
+                            } else if (
+                                weatherMain === "Clouds"
+                            ) {
+
+                                $("body").css(
+                                    "background",
+                                    "linear-gradient(135deg,#757f9a,#d7dde8)"
+                                );
+
+                            } else {
+
+                                $("body").css(
+                                    "background",
+                                    "linear-gradient(135deg,#74abe2,#5563de)"
+                                );
+                            }
+
+                            // icon
+                            let iconCode =
+                                data.weather[0].icon;
+
+                            let iconUrl =
+                                "https://openweathermap.org/img/wn/" +
+                                iconCode +
+                                "@2x.png";
+
+                            $("#weatherIcon")
+                                .css(
+                                    "transform",
+                                    "scale(0.8)"
+                                )
+                                .attr(
+                                    "src",
+                                    iconUrl
+                                )
+                                .show();
+
+                            // icon 彈出
+                            setTimeout(function () {
+
+                                $("#weatherIcon")
+                                    .css(
+                                        "transform",
+                                        "scale(1)"
+                                    );
+
+                            }, 100);
+
+                            // 淡入
+                            $(".all")
+                                .removeClass("fade-out")
+                                .addClass("fade-in");
+
+                        }, 250);
+                    },
+
+                    error: function () {
+
+                        $(".place")
+                            .html("查無資料");
+
+                        $(".temp")
+                            .html("--");
+
+                        $(".wind")
+                            .html("--");
+
+                        $(".windPower")
+                            .html("--");
+
+                        $(".humidity")
+                            .html("--");
+
+                        $("#weatherIcon")
+                            .hide();
+
+                        alert(
+                            "找不到該城市，請檢查拼字是否正確"
+                        );
+                    },
+
+                    complete: function () {
+
+                        $("#searchBtn")
+                            .prop("disabled", false)
+                            .text("查詢天氣");
+                    }
+                });
+            }
+        });
+
+    </script>
+
+</body>
+
+</html>
