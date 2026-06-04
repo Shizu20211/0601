@@ -4,388 +4,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天氣預報</title>
-
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
+    <title>天氣預報 App</title>
+    <!-- CSS -->
+    <!-- 外面引入的 -->
+    <!-- 自己撰寫的 -->
     <style>
-        body {
-            background: linear-gradient(135deg, #74abe2 0%, #5563de 100%);
-            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0;
-            transition: background 0.8s ease;
-        }
 
-        /* 天氣卡片 */
-        .weather-box {
-            background: rgba(255, 255, 255, 0.25);
-            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            width: 380px;
-            color: white;
-            text-align: center;
-
-            animation: fadeIn 1s ease-out;
-        }
-
-        /* 卡片進場 */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* 搜尋區 */
-        .search-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 25px;
-        }
-
-        #cityInput {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            outline: none;
-        }
-
-        #searchBtn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 10px;
-            background: #5563de;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        #searchBtn:hover {
-            transform: translateY(-2px);
-        }
-
-        #searchBtn:disabled {
-            background: gray;
-            cursor: not-allowed;
-        }
-
-        /* 資訊區動畫 */
-        .all {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: all 0.5s ease;
-        }
-
-        .fade-out {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-
-        .fade-in {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .icon-container {
-            height: 100px;
-        }
-
-        #weatherIcon {
-            display: none;
-            width: 100px;
-            height: 100px;
-            transition: all 0.5s ease;
-        }
-
-        /* 文字區 */
-        .all p {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            margin: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.15);
-            padding-bottom: 8px;
-        }
-
-        .place {
-            font-size: 22px;
-            font-weight: bold;
-        }
-
-        .temp {
-            color: #ffe600;
-            font-size: 28px;
-            font-weight: bold;
-        }
     </style>
 </head>
 
 <body>
-
+    <div id="weatherScene"></div>
     <div class="weather-box">
-
         <div class="search-bar">
-            <input
-                type="text"
-                id="cityInput"
-                placeholder="輸入城市英文名稱，例如 Taipei"
-            >
-
-            <button id="searchBtn">
-                查詢天氣
-            </button>
+            <input type="text" id="cityInput" placeholder="輸入城市英文，例如 Taipei">
+            <button id="searchBtn" type="button">查詢天氣</button>
         </div>
 
         <div class="all fade-in">
-
             <div class="icon-container">
                 <img id="weatherIcon">
             </div>
-
             <p>位置：<span class="place">城市</span></p>
-            <p>氣溫：<span class="temp">氣溫</span></p>
-            <p>狀況：<span class="wind">天氣狀況</span></p>
-            <p>風速：<span class="windPower">風力</span></p>
+            <p>氣溫：<span class="temp">--</span></p>
+            <p>狀況：<span class="wind">--</span></p>
+            <p>風速：<span class="windPower">--</span></p>
             <p>濕度：<span class="humidity">--</span></p>
-
         </div>
     </div>
 
+    <!-- JS -->
+    <!-- 外面引入的 -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- 自己撰寫的 -->
     <script>
-
         $(function () {
-
-            // 自動載入上次城市
-            let savedCity =
-                localStorage.getItem("lastCity");
-
+            // 載入上次城市
+            const savedCity = localStorage.getItem("lastCity");
             if (savedCity) {
                 $("#cityInput").val(savedCity);
                 executeWeatherSearch(savedCity);
             }
-
-            // 按鈕搜尋
+            // 搜尋按鈕
             $("#searchBtn").click(function () {
-
-                let cityName =
-                    $("#cityInput")
-                    .val()
-                    .trim();
-
+                const cityName = $("#cityInput").val().trim();
                 if (!cityName) {
-                    alert("請輸入城市名稱！");
+                    alert("輸入城市名稱");
                     return;
                 }
-
                 executeWeatherSearch(cityName);
             });
-
             // Enter 搜尋
             $("#cityInput").keydown(function (e) {
-
                 if (e.key === "Enter") {
                     $("#searchBtn").click();
                 }
             });
+            // 清除場景
+            function clearScene() {
+                $("#weatherScene").html("").removeAttr("style");
+                $(".flash").remove();
+            }
+            // 晴天
+            function createClearSky(isDaytime) {
+                clearScene();
+                if (isDaytime) {
+                    // 白天
+                    $("#weatherScene").css({
+                        background: "linear-gradient(135deg,#56ccf2,#2f80ed)"
+                    });
+
+                    for (let i = 0; i < 5; i++) {
+                        const light = $("<div>");
+
+                        light.css({
+                            position: "absolute",
+                            width: "300px",
+                            height: "300px",
+                            borderRadius: "50%",
+                            background: "rgba(255,255,255,.12)",
+                            filter: "blur(40px)",
+                            top: Math.random() * 70 + "%",
+                            left: Math.random() * 80 + "%"
+                        });
+
+                        $("#weatherScene").append(light);
+                    }
+
+                } else {
+                    // 夜晚
+                    $("#weatherScene").css({
+                        background: "linear-gradient(135deg,#0f2027,#203a43,#2c5364)"
+                    });
+                    // 星星
+                    for (let i = 0; i < 120; i++) {
+                        const star = $("<div>");
+
+                        star.css({
+                            position: "absolute",
+                            width: "2px",
+                            height: "2px",
+                            borderRadius: "50%",
+                            background: "white",
+                            top: Math.random() * 100 + "%",
+                            left: Math.random() * 100 + "%",
+                            opacity: Math.random()
+                        });
+
+                        $("#weatherScene").append(star);
+                    }
+                    // 月亮
+                    const moon = $("<div>");
+
+                    moon.css({
+                        position: "absolute",
+                        width: "120px",
+                        height: "120px",
+                        borderRadius: "50%",
+                        background: "#fff8dc",
+                        top: "80px",
+                        right: "120px",
+                        boxShadow: "0 0 50px rgba(255,255,255,.5)"
+                    });
+
+                    $("#weatherScene").append(moon);
+                }
+            }
+            // 雲
+            function createClouds(isDaytime) {
+                clearScene();
+                if (isDaytime) {
+                    $("#weatherScene").css("background", "linear-gradient(135deg,#757f9a,#d7dde8)");
+                } else {
+                    $("#weatherScene").css("background", "linear-gradient(135deg,#1c1c1c,#434343)");
+                }
+
+                for (let i = 0; i < 8; i++) {
+                    const cloud = $("<div class='cloud'></div>");
+
+                    cloud.css({
+                        width: (180 + Math.random() * 200) + "px",
+                        height: (70 + Math.random() * 50) + "px",
+                        top: Math.random() * 60 + "%",
+                        animationDuration: (25 + Math.random() * 30) + "s"
+                    });
+
+                    $("#weatherScene").append(cloud);
+                }
+            }
 
 
-            // 核心查詢
+            // 雨
+            function createRain() {
+                clearScene();
+                $("#weatherScene").css("background", "linear-gradient(135deg,#4b6cb7,#182848)");
+
+                for (let i = 0; i < 180; i++) {
+                    const drop = $("<div class='rain-drop'></div>");
+                    drop.css({
+                        left: Math.random() * 100 + "%",
+                        top: Math.random() * -100 + "px",
+                        animationDuration: (0.4 + Math.random()) + "s",
+                        opacity: Math.random()
+                    });
+
+                    $("#weatherScene").append(drop);
+                }
+            }
+            // 雪
+            function createSnow() {
+                clearScene();
+                $("#weatherScene").css("background", "linear-gradient(135deg,#a1c4fd,#c2e9fb)");
+
+                for (let i = 0; i < 120; i++) {
+                    const snow = $("<div class='snow'></div>");
+                    snow.css({
+                        left: Math.random() * 100 + "%",
+                        animationDuration: (3 + Math.random() * 5) + "s",
+                        opacity: Math.random()
+                    });
+
+                    $("#weatherScene").append(snow);
+                }
+            }
+            // 雷雨
+            function createThunderstorm() {
+                createRain();
+                const flash = $("<div class='flash'></div>");
+
+                $("body").append(flash);
+
+                setInterval(() => {
+                    if (Math.random() > .75) {
+                        flash.css("opacity", .8);
+                        setTimeout(() => {
+                            flash.css("opacity", 0);
+                        }, 100);
+                    }
+                }, 3000);
+            }
+            // 場景切換
+            function setWeatherScene(type, isDaytime) {
+                switch (type) {
+                    case "Clear": createClearSky(isDaytime);
+                        break;
+                    case "Clouds":
+                        createClouds(isDaytime);
+                        break;
+
+                    case "Rain":
+                    case "Drizzle":
+                        createRain();
+                        break;
+
+                    case "Thunderstorm":
+                        createThunderstorm();
+                        break;
+
+                    case "Snow":
+                        createSnow();
+                        break;
+
+                    default:
+                        createClearSky(isDaytime);
+                }
+            }
+            // 查詢天氣
             function executeWeatherSearch(cityName) {
-
                 $.ajax({
-
                     url:
-                    "https://api.openweathermap.org/data/2.5/weather",
-
+                        "https://api.openweathermap.org/data/2.5/weather",
                     type: "GET",
-
                     data: {
                         q: cityName,
-
-                        appid:
-                        "myapi",
-
+                        // appid: "d4b8b57a27dc4558578296f9338bc803",
+                        //不要偷看瑟瑟(´,,ฅωฅ,,`)
                         units: "metric",
                         lang: "zh_tw"
                     },
 
-                    dataType: "json",
-
-                    beforeSend: function () {
-
-                        $("#searchBtn")
-                            .prop("disabled", true)
-                            .text("查詢中...");
+                    beforeSend() {
+                        $("#searchBtn").prop("disabled", true).text("查詢中...");
                     },
 
-                    success: function (data) {
+                    success(data) {
+                        localStorage.setItem("lastCity", cityName);
 
-                        localStorage.setItem(
-                            "lastCity",
-                            cityName
-                        );
+                        $(".all").removeClass("fade-in").addClass("fade-out");
+                        const now = data.dt;
+                        const sunrise = data.sys.sunrise;
+                        const sunset = data.sys.sunset;
+                        const isDaytime = now >= sunrise && now < sunset;
 
-                        // 先淡出
-                        $(".all")
-                            .removeClass("fade-in")
-                            .addClass("fade-out");
+                        setWeatherScene(data.weather[0].main, isDaytime);
 
-                        setTimeout(function () {
-
-                            // 更新資料
-                            $(".place").html(
-                                data.name +
-                                ", " +
-                                data.sys.country
-                            );
-
-                            $(".temp").html(
-                                data.main.temp +
-                                " °C"
-                            );
-
-                            $(".wind").html(
-                                data.weather[0]
-                                .description
-                            );
-
-                            $(".windPower").html(
-                                data.wind.speed +
-                                " m/s"
-                            );
-
-                            $(".humidity").html(
-                                data.main.humidity +
-                                "%"
-                            );
-
-                            // 背景切換
-                            let weatherMain =
-                                data.weather[0].main;
-
-                            if (
-                                weatherMain === "Clear"
-                            ) {
-
-                                $("body").css(
-                                    "background",
-                                    "linear-gradient(135deg,#56ccf2,#2f80ed)"
-                                );
-
-                            } else if (
-                                weatherMain === "Rain"
-                            ) {
-
-                                $("body").css(
-                                    "background",
-                                    "linear-gradient(135deg,#4b6cb7,#182848)"
-                                );
-
-                            } else if (
-                                weatherMain === "Clouds"
-                            ) {
-
-                                $("body").css(
-                                    "background",
-                                    "linear-gradient(135deg,#757f9a,#d7dde8)"
-                                );
-
-                            } else {
-
-                                $("body").css(
-                                    "background",
-                                    "linear-gradient(135deg,#74abe2,#5563de)"
-                                );
-                            }
-
+                        setTimeout(() => {
+                            $(".place").text(data.name + ", " + data.sys.country);
+                            $(".temp").text(data.main.temp + " °C");
+                            $(".wind").text(data.weather[0].description);
+                            $(".windPower").text(data.wind.speed + " m/s");
+                            $(".humidity").text(data.main.humidity + "%");
                             // icon
-                            let iconCode =
-                                data.weather[0].icon;
+                            const iconUrl = "https://openweathermap.org/img/wn/" + data.weather[0].icon + "@2x.png";
 
-                            let iconUrl =
-                                "https://openweathermap.org/img/wn/" +
-                                iconCode +
-                                "@2x.png";
+                            $("#weatherIcon").attr("src", iconUrl).show();
+                            // 場景
+                            setWeatherScene(data.weather[0].main, isDaytime
+                            );
 
-                            $("#weatherIcon")
-                                .css(
-                                    "transform",
-                                    "scale(0.8)"
-                                )
-                                .attr(
-                                    "src",
-                                    iconUrl
-                                )
-                                .show();
-
-                            // icon 彈出
-                            setTimeout(function () {
-
-                                $("#weatherIcon")
-                                    .css(
-                                        "transform",
-                                        "scale(1)"
-                                    );
-
-                            }, 100);
-
-                            // 淡入
-                            $(".all")
-                                .removeClass("fade-out")
-                                .addClass("fade-in");
-
+                            $(".all").removeClass("fade-out").addClass("fade-in");
                         }, 250);
                     },
 
-                    error: function () {
-
-                        $(".place")
-                            .html("查無資料");
-
-                        $(".temp")
-                            .html("--");
-
-                        $(".wind")
-                            .html("--");
-
-                        $(".windPower")
-                            .html("--");
-
-                        $(".humidity")
-                            .html("--");
-
-                        $("#weatherIcon")
-                            .hide();
-
-                        alert(
-                            "找不到該城市，請檢查拼字是否正確"
-                        );
+                    error() {
+                        alert("找不到城市或 API Key 錯誤");
                     },
-
-                    complete: function () {
-
-                        $("#searchBtn")
-                            .prop("disabled", false)
-                            .text("查詢天氣");
+                    complete() {
+                        $("#searchBtn").prop("disabled", false).text("查詢天氣");
                     }
                 });
             }
         });
-
     </script>
 
 </body>
